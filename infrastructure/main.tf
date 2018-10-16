@@ -99,7 +99,7 @@ module "ccd-data-store-api" {
   asp_rg = "${(var.asp_rg == "use_shared") ? local.sharedASPResourceGroup : var.asp_rg}"
   website_local_cache_sizeinmb = 1050
   capacity = "${var.capacity}"
-  appinsights_instrumentation_key = "${var.appinsights_instrumentation_key}"
+  appinsights_instrumentation_key = "${(var.use_shared_appinsight == "true") ? var.appinsights_instrumentation_key : ""}"
 
   app_settings = {
     DATA_STORE_DB_HOST = "${module.data-store-db.host_name}"
