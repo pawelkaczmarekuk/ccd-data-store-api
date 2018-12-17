@@ -1,13 +1,5 @@
 package uk.gov.hmcts.ccd.domain.service.common;
 
-import java.time.LocalDateTime;
-import java.time.ZonedDateTime;
-import java.util.*;
-import java.util.function.Consumer;
-
-import static com.google.common.collect.Lists.newArrayList;
-import static java.util.Arrays.asList;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -18,6 +10,7 @@ import com.google.common.collect.Maps;
 import uk.gov.hmcts.ccd.data.casedetails.SecurityClassification;
 import uk.gov.hmcts.ccd.domain.model.aggregated.*;
 import uk.gov.hmcts.ccd.domain.model.callbacks.CallbackResponse;
+import uk.gov.hmcts.ccd.domain.model.callbacks.StartEventTrigger;
 import uk.gov.hmcts.ccd.domain.model.definition.*;
 import uk.gov.hmcts.ccd.domain.model.draft.*;
 import uk.gov.hmcts.ccd.domain.model.search.Field;
@@ -26,6 +19,14 @@ import uk.gov.hmcts.ccd.domain.model.search.WorkbasketInput;
 import uk.gov.hmcts.ccd.domain.model.std.AuditEvent;
 import uk.gov.hmcts.ccd.domain.model.std.CaseDataContent;
 import uk.gov.hmcts.ccd.domain.model.std.Event;
+
+import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
+import java.util.*;
+import java.util.function.Consumer;
+
+import static com.google.common.collect.Lists.newArrayList;
+import static java.util.Arrays.asList;
 
 public class TestBuildersUtil {
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -265,7 +266,7 @@ public class TestBuildersUtil {
             return this;
         }
 
-        public static CreateCaseDraftBuilder aCreateCaseDraft() {
+        public static CreateCaseDraftBuilder newCreateCaseDraft() {
             return new CreateCaseDraftBuilder();
         }
 
@@ -291,7 +292,7 @@ public class TestBuildersUtil {
             return this;
         }
 
-        public static UpdateCaseDraftBuilder anUpdateCaseDraft() {
+        public static UpdateCaseDraftBuilder newUpdateCaseDraft() {
             return new UpdateCaseDraftBuilder();
         }
 
@@ -407,6 +408,16 @@ public class TestBuildersUtil {
 
         public CaseTypeBuilder withEvent(CaseEvent event) {
             caseType.getEvents().add(event);
+            return this;
+        }
+
+        public CaseTypeBuilder withEvents(List<CaseEvent> event) {
+            caseType.getEvents().addAll(event);
+            return this;
+        }
+
+        public CaseTypeBuilder withCaseFields(List<CaseField> fields) {
+            caseType.getCaseFields().addAll(fields);
             return this;
         }
 
@@ -551,7 +562,7 @@ public class TestBuildersUtil {
             this.caseEvent = new CaseEvent();
         }
 
-        public static CaseEventBuilder anCaseEvent() {
+        public static CaseEventBuilder newCaseEvent() {
             return new CaseEventBuilder();
         }
 
@@ -577,6 +588,21 @@ public class TestBuildersUtil {
 
         public CaseEventBuilder withName(String name) {
             caseEvent.setName(name);
+            return this;
+        }
+
+        public CaseEventBuilder withDescription(String description) {
+            caseEvent.setDescription(description);
+            return this;
+        }
+
+        public CaseEventBuilder withShowSummary(Boolean showSummary) {
+            caseEvent.setShowSummary(showSummary);
+            return this;
+        }
+
+        public CaseEventBuilder withShowEventNotes(Boolean showEventNotes) {
+            caseEvent.setShowEventNotes(showEventNotes);
             return this;
         }
     }
@@ -611,7 +637,7 @@ public class TestBuildersUtil {
             this.caseEventTrigger = new CaseEventTrigger();
         }
 
-        public static CaseEventTriggerBuilder anEventTrigger() {
+        public static CaseEventTriggerBuilder newCaseEventTrigger() {
             return new CaseEventTriggerBuilder();
         }
 
@@ -676,6 +702,32 @@ public class TestBuildersUtil {
             return caseEventTrigger;
         }
     }
+    
+    public static class StartEventTriggerBuilder {
+        private final StartEventTrigger startEventTrigger;
+
+        private StartEventTriggerBuilder() {
+            this.startEventTrigger = new StartEventTrigger();
+        }
+
+        public static StartEventTriggerBuilder newStartEventTrigger() {
+            return new StartEventTriggerBuilder();
+        }
+
+        public StartEventTriggerBuilder withCaseDetails(CaseDetails caseDetails) {
+            this.startEventTrigger.setCaseDetails(caseDetails);
+            return this;
+        }
+
+        public StartEventTriggerBuilder withEventToken(String token) {
+            this.startEventTrigger.setToken(token);
+            return this;
+        }
+
+        public StartEventTrigger build() {
+            return startEventTrigger;
+        }
+    }
 
     public static class WizardPageBuilder {
         private final WizardPage wizardPage;
@@ -718,7 +770,7 @@ public class TestBuildersUtil {
             this.caseField = new CaseField();
         }
 
-        public static CaseFieldBuilder aCaseField() {
+        public static CaseFieldBuilder newCaseField() {
             return new CaseFieldBuilder();
         }
 
