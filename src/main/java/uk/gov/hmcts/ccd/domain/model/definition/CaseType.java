@@ -137,6 +137,10 @@ public class CaseType implements Serializable {
             .anyMatch(caseEvent -> caseEvent.getCanSaveDraft() != null && caseEvent.getCanSaveDraft());
     }
 
+    public boolean hasEventId(String eventId) {
+        return events.stream().anyMatch(event -> event.getId().equals(eventId));
+    }
+
     public List<SearchAliasField> getSearchAliasFields() {
         return searchAliasFields;
     }
