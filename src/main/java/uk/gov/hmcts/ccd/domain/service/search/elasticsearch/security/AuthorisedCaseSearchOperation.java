@@ -85,7 +85,7 @@ public class AuthorisedCaseSearchOperation implements CaseSearchOperation {
             .withCaseTypes(authorisedCaseTypeIds)
             .withSearchRequest(originalSearchRequest.getSearchRequestJsonNode())
             .withMultiCaseTypeSearch(originalSearchRequest.isMultiCaseTypeSearch())
-            .withSourceFilterAliasFields(originalSearchRequest.getSourceFilterAliasFields())
+            .withSourceFilterAliasFields(originalSearchRequest.getAliasFields())
             .build();
     }
 
@@ -95,12 +95,12 @@ public class AuthorisedCaseSearchOperation implements CaseSearchOperation {
         }
 
         CaseSearchResult result = caseSearchOperation.execute(authorisedSearchRequest);
-        filterFieldsByAccess(authorisedCaseTypes, result.getCases(), authorisedSearchRequest);
+        filterCaseDataByCaseType(authorisedCaseTypes, result.getCases(), authorisedSearchRequest);
 
         return result;
     }
 
-    private void filterFieldsByAccess(List<CaseType> authorisedCaseTypes, List<CaseDetails> cases, CrossCaseTypeSearchRequest authorisedSearchRequest) {
+    private void filterCaseDataByCaseType(List<CaseType> authorisedCaseTypes, List<CaseDetails> cases, CrossCaseTypeSearchRequest authorisedSearchRequest) {
         Map<String, CaseType> caseTypeIdByCaseType = authorisedCaseTypes
             .stream()
             .collect(Collectors.toMap(CaseType::getId, Function.identity()));
@@ -117,9 +117,9 @@ public class AuthorisedCaseSearchOperation implements CaseSearchOperation {
     }
 
     private void filterCaseDataByAclAccess(CaseType authorisedCaseType, CaseDetails caseDetails) {
-        JsonNode caseData = convertCaseDataToJsonNode(caseDetails);
+        JsonNode caseData = caseDataToJsonNode(caseDetails);
         JsonNode accessFilteredData = accessControlService.filterCaseFieldsByAccess(caseData, authorisedCaseType.getCaseFields(), getUserRoles(), CAN_READ);
-        caseDetails.setData(convertJsonNodeToCaseData(accessFilteredData));
+        caseDetails.setData(jsonNodeToCaseData(accessFilteredData));
     }
 
     private void filterCaseDataBySecurityClassification(CaseDetails caseDetails) {
@@ -129,12 +129,12 @@ public class AuthorisedCaseSearchOperation implements CaseSearchOperation {
     /**
      * Filters the case data to the aliases that were passed in the _source filter of the search request. For e.g. if the case data is
      * "case_data": {
-     * "PersonFirstName" : "J",
-     * "PersonLastName": "Baker",
-     * "PersonAddress": {
-     * "city": "London",
-     * "postcode": "W4"
-     * }
+     *   "PersonFirstName" : "J",
+     *   "PersonLastName": "Baker",
+     *   "PersonAddress": {
+     *     "city": "London",
+     *     "postcode": "W4"
+     *   }
      * }
      * <p>
      * and the source filter is
@@ -143,30 +143,29 @@ public class AuthorisedCaseSearchOperation implements CaseSearchOperation {
      * <p>
      * the case data will be filtered and transformed to
      * "case_data": {
-     * "lastName": "Baker",
-     * "postcode": "W4",
+     *   "lastName": "Baker",
+     *   "postcode": "W4",
      * }
      * <p>
      * If no source filter was passed then this will remove case data and return only metadata.
      */
     private void filterCaseDataForMultiCaseTypeSearch(CrossCaseTypeSearchRequest searchRequest, CaseType authorisedCaseType, CaseDetails caseDetails) {
         if (searchRequest.isMultiCaseTypeSearch() && caseDetails.getData() != null) {
-            JsonNode caseData = convertCaseDataToJsonNode(caseDetails);
-            List<String> aliasFields = searchRequest.getSourceFilterAliasFields();
+            JsonNode caseData = caseDataToJsonNode(caseDetails);
             JsonNode filteredMultiCaseTypeSearchData = objectMapperService.createEmptyJsonNode();
 
             authorisedCaseType.getSearchAliasFields()
                 .stream()
-                .filter(searchAliasField -> aliasFields.stream().anyMatch(aliasField -> aliasField.equalsIgnoreCase(searchAliasField.getId())))
-                .forEach(searchAliasField -> findCaseFieldPathInData(caseData, searchAliasField.getCaseFieldPath())
+                .filter(searchRequest::hasAliasField)
+                .forEach(searchAliasField -> findCaseFieldPathInCaseData(caseData, searchAliasField.getCaseFieldPath())
                     .filter(not(JsonNode::isMissingNode))
                     .ifPresent(jsonNode -> ((ObjectNode) filteredMultiCaseTypeSearchData).set(searchAliasField.getId(), jsonNode)));
 
-            caseDetails.setData(convertJsonNodeToCaseData(filteredMultiCaseTypeSearchData));
+            caseDetails.setData(jsonNodeToCaseData(filteredMultiCaseTypeSearchData));
         }
     }
 
-    private Optional<JsonNode> findCaseFieldPathInData(JsonNode caseData, String path) {
+    private Optional<JsonNode> findCaseFieldPathInCaseData(JsonNode caseData, String path) {
         String jsonPointerExpr;
         if (path.contains(DOT_SEPARATOR)) {
             jsonPointerExpr = JSON_EXPR_LOGICAL_SEPARATOR + path.replaceAll(DOT_SEPARATOR_REGEX, JSON_EXPR_LOGICAL_SEPARATOR);
@@ -181,11 +180,11 @@ public class AuthorisedCaseSearchOperation implements CaseSearchOperation {
         return userRepository.getUserRoles();
     }
 
-    private JsonNode convertCaseDataToJsonNode(CaseDetails caseDetails) {
+    private JsonNode caseDataToJsonNode(CaseDetails caseDetails) {
         return objectMapperService.convertObjectToJsonNode(caseDetails.getData());
     }
 
-    private Map<String, JsonNode> convertJsonNodeToCaseData(JsonNode jsonNode) {
+    private Map<String, JsonNode> jsonNodeToCaseData(JsonNode jsonNode) {
         return objectMapperService.convertJsonNodeToMap(jsonNode);
     }
 

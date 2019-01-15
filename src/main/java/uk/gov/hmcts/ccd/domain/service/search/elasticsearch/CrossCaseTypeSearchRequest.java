@@ -10,6 +10,7 @@ import static uk.gov.hmcts.ccd.domain.service.search.elasticsearch.CaseSearchReq
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import uk.gov.hmcts.ccd.domain.model.definition.SearchAliasField;
 import uk.gov.hmcts.ccd.endpoint.exceptions.BadSearchRequest;
 
 /**
@@ -31,19 +32,19 @@ import uk.gov.hmcts.ccd.endpoint.exceptions.BadSearchRequest;
 public class CrossCaseTypeSearchRequest {
 
     private static final String SOURCE = "_source";
-    private static final String CROSS_CASE_TYPE_SEARCH_ALIAS_FIELD_PREFIX = "alias.";
+    private static final String SEARCH_ALIAS_FIELD_PREFIX = "alias.";
 
     private final List<String> caseTypeIds = new ArrayList<>();
     private final JsonNode searchRequestJsonNode;
     private final boolean multiCaseTypeSearch;
-    private final List<String> sourceFilterAliasFields = new ArrayList<>();
+    private final List<String> aliasFields = new ArrayList<>();
 
     private CrossCaseTypeSearchRequest(List<String> caseTypeIds, JsonNode searchRequestJsonNode, boolean multiCaseTypeSearch,
-                                       List<String> sourceFilterAliasFields) {
+                                       List<String> aliasFields) {
         this.caseTypeIds.addAll(caseTypeIds);
         this.searchRequestJsonNode = searchRequestJsonNode;
         this.multiCaseTypeSearch = multiCaseTypeSearch;
-        this.sourceFilterAliasFields.addAll(sourceFilterAliasFields);
+        this.aliasFields.addAll(aliasFields);
         validateJsonSearchRequest();
     }
 
@@ -65,8 +66,12 @@ public class CrossCaseTypeSearchRequest {
         }
     }
 
-    public List<String> getSourceFilterAliasFields() {
-        return sourceFilterAliasFields;
+    public List<String> getAliasFields() {
+        return aliasFields;
+    }
+
+    public boolean hasAliasField(SearchAliasField searchAliasField) {
+        return aliasFields.stream().anyMatch(aliasField -> aliasField.equalsIgnoreCase(searchAliasField.getId()));
     }
 
     public static class Builder {
@@ -114,8 +119,8 @@ public class CrossCaseTypeSearchRequest {
         private List<String> sourceFilterToAliasFields(JsonNode multiCaseTypeSearchSourceNode) {
             return StreamSupport.stream(multiCaseTypeSearchSourceNode.spliterator(), false)
                 .map(JsonNode::asText)
-                .filter(nodeText -> nodeText.startsWith(CROSS_CASE_TYPE_SEARCH_ALIAS_FIELD_PREFIX))
-                .map(nodeText -> nodeText.replaceFirst(CROSS_CASE_TYPE_SEARCH_ALIAS_FIELD_PREFIX, ""))
+                .filter(nodeText -> nodeText.startsWith(SEARCH_ALIAS_FIELD_PREFIX))
+                .map(nodeText -> nodeText.replaceFirst(SEARCH_ALIAS_FIELD_PREFIX, ""))
                 .collect(Collectors.toList());
         }
 

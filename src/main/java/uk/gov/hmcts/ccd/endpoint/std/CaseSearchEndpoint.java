@@ -68,7 +68,7 @@ public class CaseSearchEndpoint {
 
         CrossCaseTypeSearchRequest request = new CrossCaseTypeSearchRequest.Builder()
             .withCaseTypes(caseTypeIds)
-            .withSearchRequest(convertJsonStringToJsonNode(jsonSearchRequest))
+            .withSearchRequest(stringToJsonNode(jsonSearchRequest))
             .build();
 
         CaseSearchResult result = caseSearchOperation.execute(request);
@@ -79,7 +79,7 @@ public class CaseSearchEndpoint {
         return result;
     }
 
-    private JsonNode convertJsonStringToJsonNode(String jsonSearchRequest) {
+    private JsonNode stringToJsonNode(String jsonSearchRequest) {
         return objectMapperService.convertStringToObject(jsonSearchRequest, JsonNode.class);
     }
 

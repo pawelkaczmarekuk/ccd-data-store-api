@@ -49,7 +49,7 @@ class CrossCaseTypeSearchRequestTest {
             assertThat(request.isMultiCaseTypeSearch(), is(false));
             assertThat(request.getSearchRequestJsonNode(), is(jsonNode));
             assertThat(request.getCaseTypeIds(), hasSize(1));
-            assertThat(request.getSourceFilterAliasFields().isEmpty(), is(true));
+            assertThat(request.getAliasFields().isEmpty(), is(true));
         }
 
         @Test
@@ -67,7 +67,7 @@ class CrossCaseTypeSearchRequestTest {
             assertThat(request.isMultiCaseTypeSearch(), is(true));
             assertThat(request.getSearchRequestJsonNode(), is(jsonNode));
             assertThat(request.getCaseTypeIds(), is(caseTypeIds));
-            assertThat(request.getSourceFilterAliasFields(), hasItem("name"));
+            assertThat(request.getAliasFields(), hasItem("name"));
         }
 
     }
