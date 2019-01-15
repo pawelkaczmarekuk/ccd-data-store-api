@@ -69,7 +69,6 @@ public class CaseSearchEndpoint {
         CrossCaseTypeSearchRequest request = new CrossCaseTypeSearchRequest.Builder()
             .withCaseTypes(caseTypeIds)
             .withSearchRequest(convertJsonStringToJsonNode(jsonSearchRequest))
-            .withMultiCaseTypeSearch(caseTypeIds.size() > 1)
             .build();
 
         CaseSearchResult result = caseSearchOperation.execute(request);

@@ -79,6 +79,7 @@ public class CrossCaseTypeSearchRequest {
         public Builder withCaseTypes(List<String> caseTypeIds) {
             if (caseTypeIds != null) {
                 this.caseTypeIds.addAll(caseTypeIds);
+                multiCaseTypeSearch = this.caseTypeIds.size() > 1;
             }
             return this;
         }
@@ -90,9 +91,6 @@ public class CrossCaseTypeSearchRequest {
 
         public Builder withMultiCaseTypeSearch(boolean multiCaseTypeSearch) {
             this.multiCaseTypeSearch = multiCaseTypeSearch;
-            if (multiCaseTypeSearch && searchRequestJsonNode.has(SOURCE)) {
-                setSourceFilterAliasFields(searchRequestJsonNode.get(SOURCE));
-            }
             return this;
         }
 
@@ -103,18 +101,22 @@ public class CrossCaseTypeSearchRequest {
             return this;
         }
 
-        private void setSourceFilterAliasFields(JsonNode multiCaseTypeSearchSourceNode) {
-            if (multiCaseTypeSearchSourceNode != null && multiCaseTypeSearchSourceNode.isArray()) {
-                // Alias fields are expected in source filter for multi-case types searches. If no aliases are defined in source filter, only meta data will
-                // be returned with no data fields. If aliases are defined in the source filter, alias fields with data and metadata will be returned.
-                sourceFilterAliasFields.addAll(StreamSupport.stream(multiCaseTypeSearchSourceNode.spliterator(), false)
-                                                   .map(JsonNode::asText)
-                                                   .filter(nodeText -> nodeText.startsWith(CROSS_CASE_TYPE_SEARCH_ALIAS_FIELD_PREFIX))
-                                                   .map(nodeText -> nodeText.replaceFirst(CROSS_CASE_TYPE_SEARCH_ALIAS_FIELD_PREFIX, ""))
-                                                   .collect(Collectors.toList()));
-                // remove source filter defined for multi case type search
-                removeSourceFilter();
+        private void setSourceFilterAliasFields() {
+            if (multiCaseTypeSearch && searchRequestJsonNode != null) {
+                JsonNode multiCaseTypeSearchSourceNode = searchRequestJsonNode.get(SOURCE);
+                if (multiCaseTypeSearchSourceNode != null && multiCaseTypeSearchSourceNode.isArray()) {
+                    sourceFilterAliasFields.addAll(sourceFilterToAliasFields(multiCaseTypeSearchSourceNode));
+                    removeSourceFilter();
+                }
             }
+        }
+
+        private List<String> sourceFilterToAliasFields(JsonNode multiCaseTypeSearchSourceNode) {
+            return StreamSupport.stream(multiCaseTypeSearchSourceNode.spliterator(), false)
+                .map(JsonNode::asText)
+                .filter(nodeText -> nodeText.startsWith(CROSS_CASE_TYPE_SEARCH_ALIAS_FIELD_PREFIX))
+                .map(nodeText -> nodeText.replaceFirst(CROSS_CASE_TYPE_SEARCH_ALIAS_FIELD_PREFIX, ""))
+                .collect(Collectors.toList());
         }
 
         private void removeSourceFilter() {
@@ -122,6 +124,7 @@ public class CrossCaseTypeSearchRequest {
         }
 
         public CrossCaseTypeSearchRequest build() {
+            setSourceFilterAliasFields();
             return new CrossCaseTypeSearchRequest(caseTypeIds, searchRequestJsonNode, multiCaseTypeSearch, sourceFilterAliasFields);
         }
 

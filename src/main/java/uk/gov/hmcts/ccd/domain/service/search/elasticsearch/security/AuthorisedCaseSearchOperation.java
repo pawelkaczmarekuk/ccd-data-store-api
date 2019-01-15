@@ -112,8 +112,8 @@ public class AuthorisedCaseSearchOperation implements CaseSearchOperation {
 
     private void filterCaseData(CaseType authorisedCaseType, CaseDetails caseDetails, CrossCaseTypeSearchRequest authorisedSearchRequest) {
         filterCaseDataByAclAccess(authorisedCaseType, caseDetails);
-        filterCaseFieldsBySecurityClassification(caseDetails);
-        transformCaseDataForMultiCaseTypeSearch(authorisedSearchRequest, authorisedCaseType, caseDetails);
+        filterCaseDataBySecurityClassification(caseDetails);
+        filterCaseDataForMultiCaseTypeSearch(authorisedSearchRequest, authorisedCaseType, caseDetails);
     }
 
     private void filterCaseDataByAclAccess(CaseType authorisedCaseType, CaseDetails caseDetails) {
@@ -122,11 +122,34 @@ public class AuthorisedCaseSearchOperation implements CaseSearchOperation {
         caseDetails.setData(convertJsonNodeToCaseData(accessFilteredData));
     }
 
-    private void filterCaseFieldsBySecurityClassification(CaseDetails caseDetails) {
+    private void filterCaseDataBySecurityClassification(CaseDetails caseDetails) {
         classificationService.applyClassification(caseDetails);
     }
 
-    private void transformCaseDataForMultiCaseTypeSearch(CrossCaseTypeSearchRequest searchRequest, CaseType authorisedCaseType, CaseDetails caseDetails) {
+    /**
+     * Filters the case data to the aliases that were passed in the _source filter of the search request. For e.g. if the case data is
+     * "case_data": {
+     * "PersonFirstName" : "J",
+     * "PersonLastName": "Baker",
+     * "PersonAddress": {
+     * "city": "London",
+     * "postcode": "W4"
+     * }
+     * }
+     * <p>
+     * and the source filter is
+     * "_source": ["alias.lastName", "alias.postcode"]
+     * where alias.lastName = case_data.PersonLastName and alias.postcode = case_data.PersonAddress.postcode
+     * <p>
+     * the case data will be filtered and transformed to
+     * "case_data": {
+     * "lastName": "Baker",
+     * "postcode": "W4",
+     * }
+     * <p>
+     * If no source filter was passed then this will remove case data and return only metadata.
+     */
+    private void filterCaseDataForMultiCaseTypeSearch(CrossCaseTypeSearchRequest searchRequest, CaseType authorisedCaseType, CaseDetails caseDetails) {
         if (searchRequest.isMultiCaseTypeSearch() && caseDetails.getData() != null) {
             JsonNode caseData = convertCaseDataToJsonNode(caseDetails);
             List<String> aliasFields = searchRequest.getSourceFilterAliasFields();
@@ -135,7 +158,7 @@ public class AuthorisedCaseSearchOperation implements CaseSearchOperation {
             authorisedCaseType.getSearchAliasFields()
                 .stream()
                 .filter(searchAliasField -> aliasFields.stream().anyMatch(aliasField -> aliasField.equalsIgnoreCase(searchAliasField.getId())))
-                .forEach(searchAliasField -> findPath(caseData, searchAliasField.getCaseFieldPath())
+                .forEach(searchAliasField -> findCaseFieldPathInData(caseData, searchAliasField.getCaseFieldPath())
                     .filter(not(JsonNode::isMissingNode))
                     .ifPresent(jsonNode -> ((ObjectNode) filteredMultiCaseTypeSearchData).set(searchAliasField.getId(), jsonNode)));
 
@@ -143,7 +166,7 @@ public class AuthorisedCaseSearchOperation implements CaseSearchOperation {
         }
     }
 
-    private Optional<JsonNode> findPath(JsonNode caseData, String path) {
+    private Optional<JsonNode> findCaseFieldPathInData(JsonNode caseData, String path) {
         String jsonPointerExpr;
         if (path.contains(DOT_SEPARATOR)) {
             jsonPointerExpr = JSON_EXPR_LOGICAL_SEPARATOR + path.replaceAll(DOT_SEPARATOR_REGEX, JSON_EXPR_LOGICAL_SEPARATOR);

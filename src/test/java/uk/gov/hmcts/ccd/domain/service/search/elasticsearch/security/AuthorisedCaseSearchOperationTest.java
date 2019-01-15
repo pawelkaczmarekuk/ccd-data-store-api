@@ -98,7 +98,7 @@ class AuthorisedCaseSearchOperationTest {
         when(objectMapperService.convertJsonNodeToMap(jsonNode)).thenReturn(filteredData);
 
         CrossCaseTypeSearchRequest searchRequest = new CrossCaseTypeSearchRequest.Builder()
-            .withCaseTypes(asList(CASE_TYPE_ID_1, CASE_TYPE_ID_2))
+            .withCaseTypes(singletonList(CASE_TYPE_ID_1))
             .withSearchRequest(searchRequestJsonNode)
             .build();
 
@@ -109,7 +109,6 @@ class AuthorisedCaseSearchOperationTest {
             () -> assertThat(caseDetails.getData(), Matchers.is(filteredData)),
             () -> assertThat(result.getTotal(), is(1L)),
             () -> verify(authorisedCaseDefinitionDataService).getAuthorisedCaseType(CASE_TYPE_ID_1, CAN_READ),
-            () -> verify(authorisedCaseDefinitionDataService).getAuthorisedCaseType(CASE_TYPE_ID_2, CAN_READ),
             () -> verify(caseSearchOperation).execute(any(CrossCaseTypeSearchRequest.class)),
             () -> verify(userRepository).getUserRoles(),
             () -> verify(objectMapperService).convertObjectToJsonNode(unFilteredData),

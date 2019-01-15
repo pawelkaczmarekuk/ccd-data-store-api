@@ -40,7 +40,7 @@ class CrossCaseTypeSearchRequestTest {
         void shouldBuildNonMultiCaseTypeSearch() throws Exception {
             String query = "{\"query\":{}}";
             JsonNode jsonNode = objectMapper.readTree(query);
-            List<String> caseTypeIds = Arrays.asList("CT", "PT");
+            List<String> caseTypeIds = singletonList("CT");
             CrossCaseTypeSearchRequest request = new CrossCaseTypeSearchRequest.Builder()
                 .withSearchRequest(jsonNode)
                 .withCaseTypes(caseTypeIds)
@@ -48,7 +48,7 @@ class CrossCaseTypeSearchRequestTest {
 
             assertThat(request.isMultiCaseTypeSearch(), is(false));
             assertThat(request.getSearchRequestJsonNode(), is(jsonNode));
-            assertThat(request.getCaseTypeIds(), hasSize(2));
+            assertThat(request.getCaseTypeIds(), hasSize(1));
             assertThat(request.getSourceFilterAliasFields().isEmpty(), is(true));
         }
 
