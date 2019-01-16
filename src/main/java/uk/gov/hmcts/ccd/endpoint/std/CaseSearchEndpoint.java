@@ -52,14 +52,18 @@ public class CaseSearchEndpoint {
     }
 
     @RequestMapping(value = "/searchCases", method = RequestMethod.POST)
-    @ApiOperation("Search case data according to the provided ElasticSearch query")
+    @ApiOperation("Search cases according to the provided ElasticSearch query. Supports searching across multiple case types.")
     @ApiResponses(value = {
             @ApiResponse(code = 200, message = "List of case data for the given search request")
     })
     public CaseSearchResult searchCases(
-        @ApiParam(value = "Case type ID", required = true)
+        @ApiParam(value = "Case type ID(s)", required = true)
         @RequestParam("ctid") List<String> caseTypeIds,
-        @ApiParam(name = "native ElasticSearch Search API request. Please refer to the ElasticSearch official documentation", required = true)
+        @ApiParam(value = "Native ElasticSearch Search API request. Please refer to the ElasticSearch official "
+            + "documentation. For cross case type search, "
+            + "the search results will contain only metadata by default (no case field data). To get case data in the "
+            + "search results, please state the alias fields to be returned in the _source property for e.g. \"_source\":[\"alias.customer\",\"alias.postcode\"]",
+                  required = true)
         @RequestBody String jsonSearchRequest) {
 
         Instant start = Instant.now();
