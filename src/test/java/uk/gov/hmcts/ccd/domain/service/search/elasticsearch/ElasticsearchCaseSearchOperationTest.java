@@ -14,11 +14,14 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.internal.util.reflection.Whitebox.setInternalState;
 import static uk.gov.hmcts.ccd.domain.service.search.elasticsearch.CaseSearchRequest.QUERY;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import io.searchbox.client.JestClient;
 import io.searchbox.core.MultiSearch;
 import io.searchbox.core.MultiSearchResult;
@@ -30,7 +33,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.mockito.internal.util.reflection.Whitebox;
 import uk.gov.hmcts.ccd.ApplicationParams;
 import uk.gov.hmcts.ccd.domain.model.definition.CaseDetails;
 import uk.gov.hmcts.ccd.domain.model.search.CaseSearchResult;
@@ -95,7 +97,7 @@ class ElasticsearchCaseSearchOperationTest {
             when(searchResult.getSourceAsStringList()).thenReturn(newArrayList(caseDetailsElastic));
             MultiSearchResult.MultiSearchResponse response = mock(MultiSearchResult.MultiSearchResponse.class);
             when(multiSearchResult.getResponses()).thenReturn(Collections.singletonList(response));
-            Whitebox.setInternalState(response, "searchResult", searchResult);
+            setInternalState(response, "searchResult", searchResult);
 
             when(objectMapper.readValue(caseDetailsElastic, ElasticSearchCaseDetailsDTO.class)).thenReturn(caseDetailsDTO);
             when(mapper.dtosToCaseDetailsList(newArrayList(caseDetailsDTO))).thenReturn(newArrayList(caseDetails));
@@ -133,13 +135,13 @@ class ElasticsearchCaseSearchOperationTest {
             when(searchResult1.getTotal()).thenReturn(10L);
             when(searchResult1.getSourceAsStringList()).thenReturn(newArrayList(caseDetailsElastic));
             MultiSearchResult.MultiSearchResponse response1 = mock(MultiSearchResult.MultiSearchResponse.class);
-            Whitebox.setInternalState(response1, "searchResult", searchResult1);
+            setInternalState(response1, "searchResult", searchResult1);
 
             SearchResult searchResult2 = mock(SearchResult.class);
             when(searchResult2.getTotal()).thenReturn(10L);
             when(searchResult2.getSourceAsStringList()).thenReturn(newArrayList(caseDetailsElastic));
             MultiSearchResult.MultiSearchResponse response2 = mock(MultiSearchResult.MultiSearchResponse.class);
-            Whitebox.setInternalState(response2, "searchResult", searchResult2);
+            setInternalState(response2, "searchResult", searchResult2);
             when(multiSearchResult.getResponses()).thenReturn(asList(response1, response2));
 
             when(objectMapper.readValue(caseDetailsElastic, ElasticSearchCaseDetailsDTO.class)).thenReturn(caseDetailsDTO);
@@ -174,6 +176,29 @@ class ElasticsearchCaseSearchOperationTest {
         void searchShouldReturnBadSearchRequestOnFailure() throws IOException {
             MultiSearchResult multiSearchResult = mock(MultiSearchResult.class);
             when(multiSearchResult.isSucceeded()).thenReturn(false);
+            when(jestClient.execute(any(MultiSearch.class))).thenReturn(multiSearchResult);
+            CaseSearchRequest request = new CaseSearchRequest(CASE_TYPE_ID_1, searchRequestJsonNode);
+            CrossCaseTypeSearchRequest crossCaseTypeSearchRequest = new CrossCaseTypeSearchRequest(Collections.singletonList(CASE_TYPE_ID_1),
+                                                                                                   searchRequestJsonNode);
+            when(caseSearchRequestSecurity.createSecuredSearchRequest(any(CaseSearchRequest.class))).thenReturn(request);
+
+            assertThrows(BadSearchRequest.class, () -> searchOperation.execute(crossCaseTypeSearchRequest));
+        }
+
+        @Test
+        @DisplayName("should throw exception when Elasticsearch multi-search response returns error")
+        void searchShouldReturnBadSearchRequestOnResponseError() throws IOException {
+            MultiSearchResult multiSearchResult = mock(MultiSearchResult.class);
+            MultiSearchResult.MultiSearchResponse response = mock(MultiSearchResult.MultiSearchResponse.class);
+            JsonElement error = mock(JsonElement.class);
+            setInternalState(response, "isError", true);
+            setInternalState(response, "error", error);
+
+            JsonObject errorObject = new JsonObject();
+            errorObject.addProperty("MULTI_SEARCH_ERROR_MSG_ROOT_CAUSE", "error msg");
+            when(response.error.getAsJsonObject()).thenReturn(errorObject);
+            when(multiSearchResult.isSucceeded()).thenReturn(true);
+            when(multiSearchResult.getResponses()).thenReturn(Collections.singletonList(response));
             when(jestClient.execute(any(MultiSearch.class))).thenReturn(multiSearchResult);
             CaseSearchRequest request = new CaseSearchRequest(CASE_TYPE_ID_1, searchRequestJsonNode);
             CrossCaseTypeSearchRequest crossCaseTypeSearchRequest = new CrossCaseTypeSearchRequest(Collections.singletonList(CASE_TYPE_ID_1),

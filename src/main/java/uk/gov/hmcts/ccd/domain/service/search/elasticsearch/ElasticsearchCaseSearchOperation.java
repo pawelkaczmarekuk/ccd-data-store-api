@@ -10,11 +10,13 @@ import static java.util.stream.Collectors.toList;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.JsonObject;
 import io.searchbox.client.JestClient;
 import io.searchbox.core.MultiSearch;
 import io.searchbox.core.MultiSearchResult;
 import io.searchbox.core.Search;
 import io.searchbox.core.SearchResult;
+import lombok.extern.slf4j.Slf4j;
 import org.jooq.lambda.Unchecked;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -30,9 +32,11 @@ import uk.gov.hmcts.ccd.endpoint.exceptions.ServiceException;
 
 @Service
 @Qualifier(ElasticsearchCaseSearchOperation.QUALIFIER)
+@Slf4j
 public class ElasticsearchCaseSearchOperation implements CaseSearchOperation {
 
     public static final String QUALIFIER = "ElasticsearchCaseSearchOperation";
+    static final String MULTI_SEARCH_ERROR_MSG_ROOT_CAUSE = "root_cause";
 
     private final JestClient jestClient;
     private final ObjectMapper objectMapper;
@@ -94,6 +98,15 @@ public class ElasticsearchCaseSearchOperation implements CaseSearchOperation {
         long totalHits = 0L;
 
         for (MultiSearchResult.MultiSearchResponse response : multiSearchResult.getResponses()) {
+            if (response.isError) {
+                JsonObject errorObject = response.error.getAsJsonObject();
+                String errMsg = errorObject.toString();
+                log.error("Elasticsearch query execution error: {}", errMsg);
+                if (errorObject.has(MULTI_SEARCH_ERROR_MSG_ROOT_CAUSE)) {
+                    errMsg = errorObject.get(MULTI_SEARCH_ERROR_MSG_ROOT_CAUSE).toString();
+                }
+                throw new BadSearchRequest(errMsg);
+            }
             if (response.searchResult != null) {
                 caseDetails.addAll(searchResultToCaseList(response.searchResult));
                 totalHits += response.searchResult.getTotal();
