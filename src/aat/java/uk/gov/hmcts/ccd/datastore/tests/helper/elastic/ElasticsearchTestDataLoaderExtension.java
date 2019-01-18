@@ -1,8 +1,8 @@
 package uk.gov.hmcts.ccd.datastore.tests.helper.elastic;
 
-import static java.util.Optional.ofNullable;
 import static org.hamcrest.CoreMatchers.equalTo;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static uk.gov.hmcts.ccd.datastore.tests.fixture.AATCaseType.AAT_PRIVATE_CASE_TYPE;
+import static uk.gov.hmcts.ccd.datastore.tests.functional.elasticsearch.ElasticsearchBaseTest.assertElasticsearchEnabled;
 
 import io.restassured.RestAssured;
 import io.restassured.builder.RequestSpecBuilder;
@@ -36,13 +36,6 @@ public class ElasticsearchTestDataLoaderExtension extends TestDataLoaderExtensio
         createCases();
     }
 
-    private void assertElasticsearchEnabled() {
-        // stop execution of these tests if Elasticsearch is not enabled
-        LOG.info("ELASTIC_SEARCH_ENABLED: {}", System.getenv("ELASTIC_SEARCH_ENABLED"));
-        boolean elasticsearchEnabled = ofNullable(System.getenv("ELASTIC_SEARCH_ENABLED")).map(Boolean::valueOf).orElse(false);
-        assumeTrue(elasticsearchEnabled, () -> "Ignoring Elasticsearch tests, variable ELASTIC_SEARCH_ENABLED not set");
-    }
-
     @Override
     public void close() {
         LOG.info("Deleting index and alias");
@@ -60,11 +53,12 @@ public class ElasticsearchTestDataLoaderExtension extends TestDataLoaderExtensio
         TestData testData = TestData.getInstance();
 
         testData.put(ElasticsearchCaseSearchSecurityTest.CASE_TYPE_SECURITY_TEST_REFERENCE,
-                     createCase(asPrivateCaseworker(true), AATCaseBuilder.EmptyCase.build()));
+                     createCase(asPrivateCaseworker(true), AAT_PRIVATE_CASE_TYPE, AATCaseBuilder.EmptyCase.build()));
         testData.put(ElasticsearchCaseSearchSecurityTest.CASE_STATE_SECURITY_TEST_REFERENCE,
-                     createCaseAndProgressState(asPrivateCaseworker(true)));
+                     createCaseAndProgressState(asPrivateCaseworker(true), AAT_PRIVATE_CASE_TYPE));
         testData.put(ElasticsearchCaseSearchSecurityTest.CASE_FIELD_SECURITY_TEST_REFERENCE,
                      createCase(asRestrictedCaseworker(true),
+                                AAT_PRIVATE_CASE_TYPE,
                                 AATCaseType.CaseData.builder().emailField(ElasticsearchCaseSearchSecurityTest.EMAIL_ID_VALUE).build()));
     }
 
@@ -72,9 +66,18 @@ public class ElasticsearchTestDataLoaderExtension extends TestDataLoaderExtensio
         TestData testData = TestData.getInstance();
 
         testData.put(ElasticSearchTextFieldTest.SEARCH_UPDATED_CASE_TEST_REFERENCE,
-                     createCaseAndProgressState(asPrivateCaseworker(true)));
+                     createCaseAndProgressState(asPrivateCaseworker(true), AAT_PRIVATE_CASE_TYPE));
         testData.put(ElasticSearchTextFieldTest.EXACT_MATCH_TEST_REFERENCE,
-                     createCase(asPrivateCaseworker(true), AATCaseBuilder.FullCase.build()));
+                     createCase(asPrivateCaseworker(true), AAT_PRIVATE_CASE_TYPE, AATCaseBuilder.FullCase.build()));
+    }
+
+    private void createCasesForCrossCaseTypeSearchTest() {
+        TestData testData = TestData.getInstance();
+
+        testData.put(ElasticSearchTextFieldTest.SEARCH_UPDATED_CASE_TEST_REFERENCE,
+                     createCaseAndProgressState(asPrivateCaseworker(true), AAT_PRIVATE_CASE_TYPE));
+        testData.put(ElasticSearchTextFieldTest.EXACT_MATCH_TEST_REFERENCE,
+                     createCase(asPrivateCaseworker(true), AAT_PRIVATE_CASE_TYPE, AATCaseBuilder.FullCase.build()));
     }
 
     private void deleteIndexAndAlias() {

@@ -4,7 +4,6 @@ import java.io.File;
 import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.extension.ExtensionContext.Namespace.GLOBAL;
-import static uk.gov.hmcts.ccd.datastore.tests.fixture.AATCaseType.AAT_PRIVATE_CASE_TYPE;
 
 import io.restassured.specification.RequestSpecification;
 import org.hamcrest.Matchers;
@@ -59,9 +58,9 @@ public class TestDataLoaderExtension extends BaseTest implements BeforeAllCallba
             .post("/import");
     }
 
-    protected Long createCaseAndProgressState(Supplier<RequestSpecification> asUser) {
-        Long caseReference = createCase(asUser, AATCaseBuilder.EmptyCase.build());
-        AATCaseType.Event.startProgress(AAT_PRIVATE_CASE_TYPE, caseReference)
+    protected Long createCaseAndProgressState(Supplier<RequestSpecification> asUser, String caseType) {
+        Long caseReference = createCase(asUser, caseType, AATCaseBuilder.EmptyCase.build());
+        AATCaseType.Event.startProgress(caseType, caseReference)
             .as(asUser)
             .submit()
             .then()
@@ -72,8 +71,8 @@ public class TestDataLoaderExtension extends BaseTest implements BeforeAllCallba
         return caseReference;
     }
 
-    protected Long createCase(Supplier<RequestSpecification> asUser, AATCaseType.CaseData caseData) {
-        return AATCaseType.Event.create(AAT_PRIVATE_CASE_TYPE)
+    protected Long createCase(Supplier<RequestSpecification> asUser, String caseType, AATCaseType.CaseData caseData) {
+        return AATCaseType.Event.create(caseType)
             .as(asUser)
             .withData(caseData)
             .submitAndGetReference();

@@ -17,7 +17,7 @@ import uk.gov.hmcts.ccd.datastore.tests.BaseTest;
 import uk.gov.hmcts.ccd.datastore.tests.TestData;
 import uk.gov.hmcts.ccd.datastore.tests.helper.elastic.ElasticsearchTestDataLoaderExtension;
 
-abstract class ElasticsearchBaseTest extends BaseTest {
+public abstract class ElasticsearchBaseTest extends BaseTest {
 
     private static final Logger LOG = LoggerFactory.getLogger(ElasticsearchTestDataLoaderExtension.class);
     public static final String EXACT_MATCH_TEST_REFERENCE = TestData.uniqueReference();
@@ -28,6 +28,7 @@ abstract class ElasticsearchBaseTest extends BaseTest {
     static final String ES_FIELD_STATE = "state";
     static final String ES_FIELD_CASE_REFERENCE = "reference";
     static final String ES_FIELD_EMAIL_ID = "EmailField";
+    static final String ES_FIELD_TEXT = "TextField";
 
     private static final String CASE_TYPE_ID_PARAM = "ctid";
     private static final String CASE_SEARCH_API = "/searchCases";
@@ -38,25 +39,30 @@ abstract class ElasticsearchBaseTest extends BaseTest {
         super(aat);
     }
 
-    static void assertElasticsearchEnabled() {
+    public static void assertElasticsearchEnabled() {
         // stop execution of these tests if Elasticsearch is not enabled
         LOG.info("ELASTIC_SEARCH_ENABLED: {}", System.getenv("ELASTIC_SEARCH_ENABLED"));
         boolean elasticsearchEnabled = ofNullable(System.getenv("ELASTIC_SEARCH_ENABLED")).map(Boolean::valueOf).orElse(false);
         assumeTrue(elasticsearchEnabled, () -> "Ignoring Elasticsearch tests, variable ELASTIC_SEARCH_ENABLED not set");
     }
 
-    ValidatableResponse searchCase(Supplier<RequestSpecification> requestSpecification, String jsonSearchRequest) {
+
+    ValidatableResponse searchCase(Supplier<RequestSpecification> requestSpecification, String jsonSearchRequest, String... caseTypes) {
         return requestSpecification.get()
             .given()
             .log()
             .body()
-            .queryParam(CASE_TYPE_ID_PARAM, AAT_PRIVATE_CASE_TYPE)
+            .queryParam(CASE_TYPE_ID_PARAM, caseTypes)
             .contentType(ContentType.JSON)
             .body(jsonSearchRequest)
             .when()
             .post(CASE_SEARCH_API)
             .then()
             .statusCode(200);
+    }
+
+    ValidatableResponse searchCase(Supplier<RequestSpecification> requestSpecification, String jsonSearchRequest) {
+        return searchCase(requestSpecification, jsonSearchRequest, AAT_PRIVATE_CASE_TYPE);
     }
 
     void assertSingleCaseReturned(ValidatableResponse response) {
