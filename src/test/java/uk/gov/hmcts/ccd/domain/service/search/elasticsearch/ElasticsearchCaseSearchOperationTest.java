@@ -16,6 +16,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.internal.util.reflection.Whitebox.setInternalState;
 import static uk.gov.hmcts.ccd.domain.service.search.elasticsearch.CaseSearchRequest.QUERY;
+import static uk.gov.hmcts.ccd.domain.service.search.elasticsearch.ElasticsearchCaseSearchOperation.MULTI_SEARCH_ERROR_MSG_ROOT_CAUSE;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
@@ -188,15 +189,15 @@ class ElasticsearchCaseSearchOperationTest {
         @Test
         @DisplayName("should throw exception when Elasticsearch multi-search response returns error")
         void searchShouldReturnBadSearchRequestOnResponseError() throws IOException {
-            MultiSearchResult multiSearchResult = mock(MultiSearchResult.class);
             MultiSearchResult.MultiSearchResponse response = mock(MultiSearchResult.MultiSearchResponse.class);
             JsonElement error = mock(JsonElement.class);
             setInternalState(response, "isError", true);
             setInternalState(response, "error", error);
 
             JsonObject errorObject = new JsonObject();
-            errorObject.addProperty("MULTI_SEARCH_ERROR_MSG_ROOT_CAUSE", "error msg");
+            errorObject.addProperty(MULTI_SEARCH_ERROR_MSG_ROOT_CAUSE, "error msg");
             when(response.error.getAsJsonObject()).thenReturn(errorObject);
+            MultiSearchResult multiSearchResult = mock(MultiSearchResult.class);
             when(multiSearchResult.isSucceeded()).thenReturn(true);
             when(multiSearchResult.getResponses()).thenReturn(Collections.singletonList(response));
             when(jestClient.execute(any(MultiSearch.class))).thenReturn(multiSearchResult);
