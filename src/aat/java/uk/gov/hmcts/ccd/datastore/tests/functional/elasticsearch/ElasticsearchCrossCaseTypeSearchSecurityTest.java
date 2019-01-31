@@ -52,7 +52,7 @@ public class ElasticsearchCrossCaseTypeSearchSecurityTest extends ElasticsearchB
         }
 
         @Test
-        @DisplayName("should NOT return any cases for a role with read access on case types but lower security classification than the case type")
+        @DisplayName("should NOT return any cases for a role with read access on case types but lower security classification than the case types")
         void shouldNotReturnCaseForPublicUser() {
             ValidatableResponse response = searchAcrossCaseTypes(asAutoTestCaseworker(false), ES_FIELD_NUMBER_ALIAS, NUMBER_FIELD_VALUE);
 
