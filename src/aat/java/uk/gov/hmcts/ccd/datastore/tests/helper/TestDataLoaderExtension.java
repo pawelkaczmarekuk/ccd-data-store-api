@@ -20,7 +20,8 @@ public class TestDataLoaderExtension extends BaseTest implements BeforeAllCallba
 
     private static final Logger LOG = LoggerFactory.getLogger(TestDataLoaderExtension.class);
 
-    private static final String DEFINITION_FILE = "src/aat/resources/CCD_CNP_27.xlsx";
+    private static final String AUTO_TEST1_DEFINITION_FILE = "src/aat/resources/CCD_CNP_27_AUTOTEST1.xlsx";
+    private static final String AUTO_TEST2_DEFINITION_FILE = "src/aat/resources/CCD_CNP_27_AUTOTEST2.xlsx";
 
     private static boolean testExecutionStarted = false;
 
@@ -48,10 +49,15 @@ public class TestDataLoaderExtension extends BaseTest implements BeforeAllCallba
     protected void loadData() {
     }
 
-    protected void importDefinition() {
+    protected void importDefinitions() {
+        importDefinition(AUTO_TEST1_DEFINITION_FILE);
+        importDefinition(AUTO_TEST2_DEFINITION_FILE);
+    }
+
+    private void importDefinition(String file) {
         asAutoTestImporter()
             .given()
-            .multiPart(new File(DEFINITION_FILE))
+            .multiPart(new File(file))
             .expect()
             .statusCode(201)
             .when()
@@ -73,6 +79,13 @@ public class TestDataLoaderExtension extends BaseTest implements BeforeAllCallba
 
     protected Long createCase(Supplier<RequestSpecification> asUser, String caseType, AATCaseType.CaseData caseData) {
         return AATCaseType.Event.create(caseType)
+            .as(asUser)
+            .withData(caseData)
+            .submitAndGetReference();
+    }
+
+    protected Long createCase(Supplier<RequestSpecification> asUser, String jurisdiction, String caseType, AATCaseType.CaseData caseData) {
+        return AATCaseType.Event.create(jurisdiction, caseType)
             .as(asUser)
             .withData(caseData)
             .submitAndGetReference();

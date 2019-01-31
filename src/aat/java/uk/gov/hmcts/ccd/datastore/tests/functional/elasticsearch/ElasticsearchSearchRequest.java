@@ -6,12 +6,22 @@ class ElasticsearchSearchRequest {
         return "{"
             + "  \"query\": {"
             + "    \"match\": {"
-            + "    \"" + field + "\" : \"" + String.valueOf(value) + "\""
+            + "    \"" + field + "\" : \"" + value + "\""
             + "    }"
             + "  }"
             + "}";
     }
 
+    static String exactMatchWithSourceFilter(String field, Object value, String... sourceFilters) {
+        return "{"
+            + "  \"_source\": [\"" + String.join("\",\"", sourceFilters) + "\"],"
+            + "  \"query\": {"
+            + "    \"match\": {"
+            + "    \"" + field + "\" : \"" + value + "\""
+            + "    }"
+            + "  }"
+            + "}";
+    }
 
     static String wildcardMatch(String field, Object value) {
         return "{"

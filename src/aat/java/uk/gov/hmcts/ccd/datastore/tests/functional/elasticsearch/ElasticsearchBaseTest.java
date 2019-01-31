@@ -4,7 +4,9 @@ import java.util.function.Supplier;
 
 import static java.util.Optional.ofNullable;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.Matchers.hasItems;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static uk.gov.hmcts.ccd.datastore.tests.fixture.AATCaseType.AAT_PRIVATE2_CASE_TYPE;
 import static uk.gov.hmcts.ccd.datastore.tests.fixture.AATCaseType.AAT_PRIVATE_CASE_TYPE;
 
 import io.restassured.http.ContentType;
@@ -25,10 +27,13 @@ public abstract class ElasticsearchBaseTest extends BaseTest {
     static final String CASE_DATA_FIELD_PREFIX = "data.";
     static final String RESPONSE_CASE_DATA_FIELDS_PREFIX = "case_data.";
     static final String CASE_ID = "id";
+    static final String ES_FIELD_CASE_TYPE = "case_type_id";
     static final String ES_FIELD_STATE = "state";
     static final String ES_FIELD_CASE_REFERENCE = "reference";
     static final String ES_FIELD_EMAIL_ID = "EmailField";
-    static final String ES_FIELD_TEXT = "TextField";
+    static final String ES_FIELD_TEXT_ALIAS = "alias.TextFieldAlias";
+    static final String ES_FIELD_NUMBER_ALIAS = "alias.NumberFieldAlias";
+    static final String ES_FIELD_EMAIL_ALIAS = "alias.EmailFieldAlias";
 
     private static final String CASE_TYPE_ID_PARAM = "ctid";
     private static final String CASE_SEARCH_API = "/searchCases";
@@ -66,14 +71,29 @@ public abstract class ElasticsearchBaseTest extends BaseTest {
     }
 
     void assertSingleCaseReturned(ValidatableResponse response) {
-        response.body("cases.size()", is(1));
+        assertCaseListSizeInResponse(response, 1);
+    }
+
+    void assertCaseListSizeInResponse(ValidatableResponse response, int expectedSize) {
+        response.body("cases.size()", is(expectedSize));
     }
 
     void assertNoCaseReturned(ValidatableResponse response) {
         response.body("cases.size()", is(0));
     }
 
-    void assertField(ValidatableResponse response, String field, Object expectedValue) {
-        response.body("cases[0]." + field, is(expectedValue));
+    ValidatableResponse searchAcrossCaseTypes(Supplier<RequestSpecification> asUser, String field, Object value) {
+        String jsonSearchRequest = ElasticsearchSearchRequest.exactMatch(field, value);
+        return searchCase(asUser, jsonSearchRequest, AAT_PRIVATE_CASE_TYPE, AAT_PRIVATE2_CASE_TYPE);
     }
+
+    void assertCaseReferencesInResponse(ValidatableResponse response, Object... values) {
+        assertCaseListSizeInResponse(response, 2);
+        assertField(response, CASE_ID, values);
+    }
+
+    void assertField(ValidatableResponse response, String field, Object... expectedValues) {
+        response.body("cases." + field, hasItems(expectedValues));
+    }
+
 }

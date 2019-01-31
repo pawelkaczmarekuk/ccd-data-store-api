@@ -1,9 +1,11 @@
 package uk.gov.hmcts.ccd.datastore.tests.functional.elasticsearch;
 
-import java.util.function.Supplier;
+import static org.hamcrest.Matchers.emptyIterable;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.hasKey;
+import static org.hamcrest.Matchers.hasSize;
 
 import io.restassured.response.ValidatableResponse;
-import io.restassured.specification.RequestSpecification;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -11,12 +13,15 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import uk.gov.hmcts.ccd.datastore.tests.AATHelper;
 import uk.gov.hmcts.ccd.datastore.tests.TestData;
+import uk.gov.hmcts.ccd.datastore.tests.fixture.AATCaseType;
 import uk.gov.hmcts.ccd.datastore.tests.helper.elastic.ElasticsearchTestDataLoaderExtension;
 
 @ExtendWith(ElasticsearchTestDataLoaderExtension.class)
 public class ElasticsearchCrossCaseTypeSearchTest extends ElasticsearchBaseTest {
 
-    public static final String TEXT_FIELD_REFERENCE = TestData.uniqueReference();
+    public static final String TEXT_FIELD_VALUE = TestData.uniqueReference();
+    public static final String AAT_PRIVATE_CROSS_CASE_TYPE_SEARCH_REFERENCE = TestData.uniqueReference();
+    public static final String AAT_PRIVATE2_CROSS_CASE_TYPE_SEARCH_REFERENCE = TestData.uniqueReference();
 
     ElasticsearchCrossCaseTypeSearchTest(AATHelper aat) {
         super(aat);
@@ -32,21 +37,13 @@ public class ElasticsearchCrossCaseTypeSearchTest extends ElasticsearchBaseTest 
     class SearchByAlias {
 
         @Test
-        @DisplayName("should return cases across multiple case types for exact match on search alias field")
-        void shouldReturnCaseForPrivateUser() {
-            searchCaseAndAssertCaseReference(asPrivateCaseworker(false), ES_FIELD_TEXT, testData.get(TEXT_FIELD_REFERENCE));
-        }
+        @DisplayName("should return cases across multiple case types for match on search alias field")
+        void shouldReturnCases() {
+            ValidatableResponse response = searchAcrossCaseTypes(asPrivateCrossCaseTypeCaseworker(false), ES_FIELD_TEXT_ALIAS, TEXT_FIELD_VALUE);
 
-    }
-
-    @Nested
-    @DisplayName("Cross case type sort by alias")
-    class SortByAlias {
-
-        @Test
-        @DisplayName("should sort cases across multiple case types on a search alias field")
-        void shouldReturnCase() {
-            searchCaseAndAssertCaseReference(asPrivateCaseworker(false), ES_FIELD_TEXT, testData.get(TEXT_FIELD_REFERENCE));
+            assertCaseReferencesInResponse(response,
+                                           testData.get(AAT_PRIVATE_CROSS_CASE_TYPE_SEARCH_REFERENCE),
+                                           testData.get(AAT_PRIVATE2_CROSS_CASE_TYPE_SEARCH_REFERENCE));
         }
 
     }
@@ -56,44 +53,32 @@ public class ElasticsearchCrossCaseTypeSearchTest extends ElasticsearchBaseTest 
     class FilterByAlias {
 
         @Test
-        @DisplayName("should return metadata and case data for source filter with aliases")
+        @DisplayName("should return metadata and case data when source filter with aliases is requested in the search")
         void shouldReturnMetadataAndCaseData() {
-            searchCaseAndAssertCaseReference(asPrivateCaseworker(false), ES_FIELD_TEXT, testData.get(TEXT_FIELD_REFERENCE));
+            String jsonSearchRequest = ElasticsearchSearchRequest.exactMatchWithSourceFilter(ES_FIELD_TEXT_ALIAS, TEXT_FIELD_VALUE, ES_FIELD_TEXT_ALIAS,
+                                                                                             ES_FIELD_NUMBER_ALIAS);
+            ValidatableResponse response = searchCase(asPrivateCrossCaseTypeCaseworker(false), jsonSearchRequest, AATCaseType.AAT_PRIVATE_CASE_TYPE,
+                                                      AATCaseType.AAT_PRIVATE2_CASE_TYPE);
+
+            assertCaseListSizeInResponse(response, 2);
+            response.body("cases[0].keySet()", hasSize(greaterThan(1)));
+            response.body("cases[0].case_data.keySet()", hasSize(2));
+            response.body("cases[1].case_data.keySet()", hasSize(2));
+            response.body("cases[0].case_data", hasKey("TextFieldAlias"));
+            response.body("cases[0].case_data", hasKey("NumberFieldAlias"));
         }
 
         @Test
         @DisplayName("should return metadata only when source filter is not requested")
         void shouldReturnMetadataOnly() {
-            searchCaseAndAssertCaseReference(asPrivateCaseworker(false), ES_FIELD_CASE_REFERENCE, testData.get(TEXT_FIELD_REFERENCE));
+            ValidatableResponse response = searchAcrossCaseTypes(asPrivateCrossCaseTypeCaseworker(false), ES_FIELD_TEXT_ALIAS, TEXT_FIELD_VALUE);
+
+            assertCaseListSizeInResponse(response, 2);
+            response.body("cases[0].keySet()", hasSize(greaterThan(1)));
+            response.body("cases[0].case_data.keySet()", emptyIterable());
+            response.body("cases[1].case_data.keySet()", emptyIterable());
         }
 
-    }
-
-    private void searchCaseForExactMatchAndVerifyResponse(String field, String value) {
-        String jsonSearchRequest = ElasticsearchSearchRequest.exactMatch(CASE_DATA_FIELD_PREFIX + field, value);
-
-        ValidatableResponse response = searchCase(asPrivateCaseworker(false), jsonSearchRequest);
-
-        assertSingleCaseReturned(response);
-        assertField(response, RESPONSE_CASE_DATA_FIELDS_PREFIX + field, value);
-        assertField(response, CASE_ID, testData.get(EXACT_MATCH_TEST_REFERENCE));
-    }
-
-    private ValidatableResponse searchCaseAndAssertCaseReference(Supplier<RequestSpecification> asUser, String field, Object value) {
-        ValidatableResponse response = searchCase(asUser, field, value);
-        assertSingleCaseReturned(response);
-        assertField(response, CASE_ID, value);
-        return response;
-    }
-
-    private void searchCaseAndAssertCaseNotReturned(Supplier<RequestSpecification> asUser, String field, Object value) {
-        ValidatableResponse response = searchCase(asUser, field, value);
-        assertNoCaseReturned(response);
-    }
-
-    private ValidatableResponse searchCase(Supplier<RequestSpecification> asUser, String field, Object value) {
-        String jsonSearchRequest = ElasticsearchSearchRequest.exactMatch(field, value);
-        return searchCase(asUser, jsonSearchRequest);
     }
 
 }
