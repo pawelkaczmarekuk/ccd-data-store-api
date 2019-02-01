@@ -2,7 +2,11 @@ package uk.gov.hmcts.ccd.domain.service.common;
 
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import static com.google.common.collect.Lists.newArrayList;
@@ -16,11 +20,42 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import uk.gov.hmcts.ccd.data.casedetails.SecurityClassification;
-import uk.gov.hmcts.ccd.domain.model.aggregated.*;
+import uk.gov.hmcts.ccd.domain.model.aggregated.CaseEventTrigger;
+import uk.gov.hmcts.ccd.domain.model.aggregated.CaseHistoryView;
+import uk.gov.hmcts.ccd.domain.model.aggregated.CaseView;
+import uk.gov.hmcts.ccd.domain.model.aggregated.CaseViewEvent;
+import uk.gov.hmcts.ccd.domain.model.aggregated.CaseViewField;
+import uk.gov.hmcts.ccd.domain.model.aggregated.CaseViewTab;
+import uk.gov.hmcts.ccd.domain.model.aggregated.CaseViewTrigger;
+import uk.gov.hmcts.ccd.domain.model.aggregated.CaseViewType;
+import uk.gov.hmcts.ccd.domain.model.aggregated.DefaultSettings;
+import uk.gov.hmcts.ccd.domain.model.aggregated.IDAMProperties;
+import uk.gov.hmcts.ccd.domain.model.aggregated.JurisdictionDisplayProperties;
+import uk.gov.hmcts.ccd.domain.model.aggregated.ProfileCaseState;
+import uk.gov.hmcts.ccd.domain.model.aggregated.User;
+import uk.gov.hmcts.ccd.domain.model.aggregated.UserProfile;
+import uk.gov.hmcts.ccd.domain.model.aggregated.WorkbasketDefault;
 import uk.gov.hmcts.ccd.domain.model.callbacks.CallbackResponse;
 import uk.gov.hmcts.ccd.domain.model.callbacks.StartEventTrigger;
-import uk.gov.hmcts.ccd.domain.model.definition.*;
-import uk.gov.hmcts.ccd.domain.model.draft.*;
+import uk.gov.hmcts.ccd.domain.model.definition.AccessControlList;
+import uk.gov.hmcts.ccd.domain.model.definition.CaseDetails;
+import uk.gov.hmcts.ccd.domain.model.definition.CaseEvent;
+import uk.gov.hmcts.ccd.domain.model.definition.CaseField;
+import uk.gov.hmcts.ccd.domain.model.definition.CaseState;
+import uk.gov.hmcts.ccd.domain.model.definition.CaseTabCollection;
+import uk.gov.hmcts.ccd.domain.model.definition.CaseType;
+import uk.gov.hmcts.ccd.domain.model.definition.CaseTypeTab;
+import uk.gov.hmcts.ccd.domain.model.definition.CaseTypeTabField;
+import uk.gov.hmcts.ccd.domain.model.definition.FieldType;
+import uk.gov.hmcts.ccd.domain.model.definition.Jurisdiction;
+import uk.gov.hmcts.ccd.domain.model.definition.UserRole;
+import uk.gov.hmcts.ccd.domain.model.definition.WizardPage;
+import uk.gov.hmcts.ccd.domain.model.definition.WizardPageField;
+import uk.gov.hmcts.ccd.domain.model.draft.CaseDraft;
+import uk.gov.hmcts.ccd.domain.model.draft.CreateCaseDraftRequest;
+import uk.gov.hmcts.ccd.domain.model.draft.Draft;
+import uk.gov.hmcts.ccd.domain.model.draft.DraftResponse;
+import uk.gov.hmcts.ccd.domain.model.draft.UpdateCaseDraftRequest;
 import uk.gov.hmcts.ccd.domain.model.search.Field;
 import uk.gov.hmcts.ccd.domain.model.search.SearchInput;
 import uk.gov.hmcts.ccd.domain.model.search.WorkbasketInput;
@@ -165,6 +200,11 @@ public class TestBuildersUtil {
 
         public CaseDataContentBuilder withData(Map<String, JsonNode> data) {
             this.caseDataContent.setData(data);
+            return this;
+        }
+
+        public CaseDataContentBuilder withEventData(Map<String, JsonNode> eventData) {
+            this.caseDataContent.setEventData(eventData);
             return this;
         }
 
@@ -453,6 +493,7 @@ public class TestBuildersUtil {
 
         private CaseViewBuilder() {
             this.caseView = new CaseView();
+            this.caseView.setTabs(new CaseViewTab[0]);
         }
 
         public static CaseViewBuilder aCaseView() {
@@ -479,9 +520,42 @@ public class TestBuildersUtil {
             return this;
         }
 
+        public CaseViewBuilder addCaseViewTab(CaseViewTab caseViewTab) {
+            CaseViewTab[] newTabs = new CaseViewTab[caseView.getTabs().length + 1];
+            System.arraycopy(caseView.getTabs(), 0, newTabs, 0, caseView.getTabs().length);
+            newTabs[newTabs.length - 1] = caseViewTab;
+            caseView.setTabs(newTabs);
+            return this;
+        }
+
         public CaseView build() {
             caseView.setTriggers(caseViewTriggers.toArray(new CaseViewTrigger[]{}));
             return caseView;
+        }
+    }
+
+    public static class CaseViewTabBuilder {
+        private final CaseViewTab caseViewTab;
+
+        private CaseViewTabBuilder() {
+            this.caseViewTab = new CaseViewTab();
+            caseViewTab.setFields(new CaseViewField[0]);
+        }
+
+        public static CaseViewTabBuilder newCaseViewTab() {
+            return new CaseViewTabBuilder();
+        }
+
+        public CaseViewTabBuilder addCaseViewField(CaseViewField caseViewField) {
+            CaseViewField[] newFields = new CaseViewField[caseViewTab.getFields().length + 1];
+            System.arraycopy(caseViewTab.getFields(), 0, newFields, 0, caseViewTab.getFields().length);
+            newFields[newFields.length - 1] = caseViewField;
+            caseViewTab.setFields(newFields);
+            return this;
+        }
+
+        public CaseViewTab build() {
+            return caseViewTab;
         }
     }
 
@@ -603,6 +677,37 @@ public class TestBuildersUtil {
 
         public CaseEventBuilder withShowEventNotes(Boolean showEventNotes) {
             caseEvent.setShowEventNotes(showEventNotes);
+            return this;
+        }
+    }
+
+    public static class EventBuilder {
+        private final Event event;
+
+        private EventBuilder() {
+            this.event = new Event();
+        }
+
+        public static EventBuilder newEvent() {
+            return new EventBuilder();
+        }
+
+        public EventBuilder withEventId(String eventId) {
+            event.setEventId(eventId);
+            return this;
+        }
+
+        public Event build() {
+            return event;
+        }
+
+        public EventBuilder withSummary(String summary) {
+            event.setSummary(summary);
+            return this;
+        }
+
+        public EventBuilder withDescription(String description) {
+            event.setDescription(description);
             return this;
         }
     }
@@ -852,6 +957,7 @@ public class TestBuildersUtil {
 
     public static class CaseViewFieldBuilder {
         private final CaseViewField caseViewField;
+        private final List<AccessControlList> acls = newArrayList();
 
         private CaseViewFieldBuilder() {
             this.caseViewField = new CaseViewField();
@@ -866,8 +972,14 @@ public class TestBuildersUtil {
             return this;
         }
 
+        public CaseViewFieldBuilder withACL(AccessControlList acl) {
+            acls.add(acl);
+            return this;
+        }
+
         public CaseViewField build() {
-            return caseViewField;
+            this.caseViewField.setAccessControlLists(acls);
+            return this.caseViewField;
         }
     }
 
@@ -893,7 +1005,7 @@ public class TestBuildersUtil {
     }
 
     public static class JurisdictionBuilder {
-        private Jurisdiction jurisdiction;
+        private final Jurisdiction jurisdiction;
 
         public static JurisdictionBuilder newJurisdiction() {
             return new JurisdictionBuilder();
@@ -1040,6 +1152,7 @@ public class TestBuildersUtil {
                 CaseTypeTabField tabField = new CaseTypeTabField();
                 tabField.setCaseField(caseField);
                 tabField.setShowCondition(caseFieldId + "-fieldShowCondition");
+                tabField.setDisplayContextParameter("#TABLE(Title, FirstName, MiddleName)");
                 tabFields.add(tabField);
             });
             tab.setShowCondition("tabShowCondition");

@@ -1,5 +1,16 @@
 package uk.gov.hmcts.ccd.data.casedetails;
 
+import java.util.*;
+
+import static java.lang.String.valueOf;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -10,14 +21,6 @@ import org.mockito.MockitoAnnotations;
 import uk.gov.hmcts.ccd.data.casedetails.search.MetaData;
 import uk.gov.hmcts.ccd.data.casedetails.search.PaginatedSearchMetadata;
 import uk.gov.hmcts.ccd.domain.model.definition.CaseDetails;
-
-import java.util.*;
-
-import static java.lang.String.valueOf;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.mockito.Mockito.*;
 
 class CachedCaseDetailsRepositoryTest {
 
@@ -90,7 +93,7 @@ class CachedCaseDetailsRepositoryTest {
 
     @Nested
     @DisplayName("Paginated search metadata")
-    class getPaginatedSearchMetadata {
+    class GetPaginatedSearchMetadata {
         @Test
         @DisplayName("should initially retrieve paginated search metadata from decorated repository")
         void getPaginatedSearchMetaData() {
@@ -129,7 +132,7 @@ class CachedCaseDetailsRepositoryTest {
 
     @Nested
     @DisplayName("Case details list by MetaData and FieldData")
-    class getCaseDetailsByMetaDataAndFieldData {
+    class GetCaseDetailsByMetaDataAndFieldData {
         @Test
         @DisplayName("should initially retrieve case details list from decorated repository")
         void findByMetaDataAndFieldData() {
@@ -168,7 +171,7 @@ class CachedCaseDetailsRepositoryTest {
 
     @Nested
     @DisplayName("Case details by jurisdictionId, caseTypeId and caseReference")
-    class getCaseDetailsByUniqueInfo {
+    class GetCaseDetailsByUniqueInfo {
         @Test
         @DisplayName("should initially retrieve case details from decorated repository")
         void findUniqueCase() {
@@ -204,7 +207,7 @@ class CachedCaseDetailsRepositoryTest {
 
     @Nested
     @DisplayName("Case details by Reference")
-    class getCaseDetailsByReference {
+    class GetCaseDetailsByReference {
         @Test
         @DisplayName("should initially retrieve case details from decorated repository")
         void findByReference() {
@@ -239,7 +242,7 @@ class CachedCaseDetailsRepositoryTest {
 
     @Nested
     @DisplayName("Case details by Id")
-    class getCaseDetailsById {
+    class GetCaseDetailsById {
 
         @Test
         @DisplayName("should initially retrieve case details from decorated repository")
@@ -275,7 +278,7 @@ class CachedCaseDetailsRepositoryTest {
 
     @Nested
     @DisplayName("findById(String, Long)")
-    class findByIdWithJurisdiction {
+    class FindByIdWithJurisdiction {
         @Test
         @DisplayName("should initially retrieve case details from decorated repository")
         void findById() {
@@ -316,7 +319,7 @@ class CachedCaseDetailsRepositoryTest {
 
     @Nested
     @DisplayName("findByReference(String, String)")
-    class findByReferenceAsString {
+    class FindByReferenceAsString {
         @Test
         @DisplayName("should initially retrieve case details from decorated repository")
         void findByReference() {
@@ -356,8 +359,49 @@ class CachedCaseDetailsRepositoryTest {
     }
 
     @Nested
+    @DisplayName("findByReference(String)")
+    class FindByReferenceString {
+        @Test
+        @DisplayName("should initially retrieve case details from decorated repository")
+        void findByReference() {
+            doReturn(Optional.of(caseDetails)).when(caseDetailsRepository)
+                                              .findByReference(CASE_REFERENCE_STR);
+
+            final CaseDetails returned = cachedRepository.findByReference(CASE_REFERENCE_STR)
+                                                         .orElseThrow(() -> new AssertionError("Not found"));
+
+            assertAll(
+                () -> assertThat(returned, is(caseDetails)),
+                () -> verify(caseDetailsRepository, times(1)).findByReference(CASE_REFERENCE_STR)
+            );
+        }
+
+        @Test
+        @DisplayName("should cache case details for subsequent calls")
+        void findByReferenceAgain() {
+            doReturn(Optional.of(caseDetails)).when(caseDetailsRepository)
+                                              .findByReference(CASE_REFERENCE_STR);
+
+            cachedRepository.findByReference(CASE_REFERENCE_STR);
+
+            verify(caseDetailsRepository, times(1)).findByReference(CASE_REFERENCE_STR);
+
+            doReturn(Optional.of(new CaseDetails())).when(caseDetailsRepository)
+                                                    .findByReference(CASE_REFERENCE_STR);
+
+            final CaseDetails returned = cachedRepository.findByReference(CASE_REFERENCE_STR)
+                                                         .orElseThrow(() -> new AssertionError("Not found"));
+
+            assertAll(
+                () -> assertThat(returned, is(caseDetails)),
+                () -> verifyNoMoreInteractions(caseDetailsRepository)
+            );
+        }
+    }
+
+    @Nested
     @DisplayName("lockByReference(String, String)")
-    class lockByReferenceAsString {
+    class LockByReferenceAsString {
         @Test
         @DisplayName("should delegate to decorated repository")
         void findByReference() {

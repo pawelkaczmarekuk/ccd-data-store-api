@@ -31,6 +31,7 @@ locals {
 
   // S2S
   s2s_url = "http://rpe-service-auth-provider-${local.env_ase_url}"
+  s2s_vault_url = "https://s2s-${local.local_env}.vault.azure.net/"
 
   custom_redirect_uri = "${var.frontend_url}/oauth2redirect"
   default_redirect_uri = "https://ccd-case-management-web-${local.env_ase_url}/oauth2redirect"
@@ -49,8 +50,8 @@ data "azurerm_key_vault" "ccd_shared_key_vault" {
 }
 
 data "azurerm_key_vault_secret" "ccd_data_s2s_key" {
-  name = "ccd-data-store-api-s2s-secret"
-  vault_uri = "${data.azurerm_key_vault.ccd_shared_key_vault.vault_uri}"
+  name = "microservicekey-ccd-data"
+  vault_uri = "${local.s2s_vault_url}"
 }
 
 // load balancer url. The load balancer will kill connections when idle for 5 min. Used by functional tests
@@ -124,6 +125,10 @@ module "ccd-data-store-api" {
     DATA_STORE_S2S_AUTHORISED_SERVICES  = "${var.authorised-services}"
 
     CCD_DEFAULTPRINTURL                 = "${local.default_print_url}"
+
+    DEFINITION_CACHE_TTL_SEC            = "${var.definition_cache_ttl_sec}"
+    DEFINITION_CACHE_MAX_SIZE           = "${var.definition_cache_max_size}"
+    DEFINITION_CACHE_EVICTION_POLICY    = "${var.definition_cache_eviction_policy}"
 
     ELASTIC_SEARCH_ENABLED              = "${var.elastic_search_enabled}"
     ELASTIC_SEARCH_HOSTS                = "${local.elastic_search_hosts}"
