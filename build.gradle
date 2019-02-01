@@ -96,7 +96,7 @@ ext {
     junitJupiterVersion = '5.2.0'
     junitVintageVersion = '5.2.0'
     hibernateVersion = '5.2.16.Final'
-    reformLogging = '2.2.1'
+    reformLogging = '4.0.1'
     swagger2Version = '2.9.0'
     limits = [
             'instruction': 90,
