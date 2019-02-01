@@ -1,43 +1,25 @@
 package uk.gov.hmcts.ccd;
 
-import com.hazelcast.config.*;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.ehcache.EhCacheCacheManager;
+import org.springframework.cache.ehcache.EhCacheManagerFactoryBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.ClassPathResource;
 
 @Configuration
 public class CachingConfiguration {
 
-    @Autowired
-    ApplicationParams applicationParams;
-
+    @Bean
+    public CacheManager cacheManager() {
+        return new EhCacheCacheManager(ehCacheCacheManager().getObject());
+    }
 
     @Bean
-    public Config hazelCastConfig() {
-
-        Config config = new Config();
-        NetworkConfig networkConfig = config.setInstanceName("hazelcast-instance-ccd").getNetworkConfig();
-        networkConfig.getJoin().getMulticastConfig().setEnabled(false);
-        networkConfig.getJoin().getTcpIpConfig().setEnabled(false);
-        configCaches(applicationParams.getDefinitionCacheTTLSecs(), config);
-        return config;
+    public EhCacheManagerFactoryBean ehCacheCacheManager() {
+        EhCacheManagerFactoryBean cmfb = new EhCacheManagerFactoryBean();
+        cmfb.setConfigLocation(new ClassPathResource("ehcache.xml"));
+        cmfb.setShared(true);
+        return cmfb;
     }
-
-    private void configCaches(int definitionCacheTTL, Config config) {
-        config.addMapConfig(newMapConfig("caseTypeDefinitionsCache", definitionCacheTTL));
-        config.addMapConfig(newMapConfig("workBasketResultCache", definitionCacheTTL));
-        config.addMapConfig(newMapConfig("searchResultCache", definitionCacheTTL));
-        config.addMapConfig(newMapConfig("searchInputDefinitionCache", definitionCacheTTL));
-        config.addMapConfig(newMapConfig("workbasketInputDefinitionCache", definitionCacheTTL));
-        config.addMapConfig(newMapConfig("caseTabCollectionCache", definitionCacheTTL));
-        config.addMapConfig(newMapConfig("wizardPageCollectionCache", definitionCacheTTL));
-    }
-
-    private MapConfig newMapConfig(final String name, int definitionCacheTTL) {
-        return new MapConfig().setName(name)
-                .setMaxSizeConfig(new MaxSizeConfig(applicationParams.getDefinitionCacheMaxSize(), MaxSizeConfig.MaxSizePolicy.PER_NODE))
-                .setEvictionPolicy(applicationParams.getDefinitionCacheEvictionPolicy())
-                .setMaxIdleSeconds(definitionCacheTTL);
-    }
-
 }
