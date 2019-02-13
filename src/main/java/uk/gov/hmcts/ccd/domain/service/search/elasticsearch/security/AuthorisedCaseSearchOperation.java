@@ -8,11 +8,18 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static java.util.Optional.of;
+import static java.util.Optional.ofNullable;
 import static org.jooq.lambda.function.Functions.not;
 import static uk.gov.hmcts.ccd.domain.service.common.AccessControlService.CAN_READ;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.MissingNode;
+import com.fasterxml.jackson.databind.node.NullNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.jayway.jsonpath.JsonPath;
+import com.jayway.jsonpath.PathNotFoundException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -31,9 +38,11 @@ import uk.gov.hmcts.ccd.domain.service.security.AuthorisedCaseDefinitionDataServ
 
 @Service
 @Qualifier(AuthorisedCaseSearchOperation.QUALIFIER)
+@Slf4j
 public class AuthorisedCaseSearchOperation implements CaseSearchOperation {
 
     public static final String QUALIFIER = "AuthorisedCaseSearchOperation";
+    private static final String ROOT_ELEMENT = "$.";
     private static final String DOT_SEPARATOR = ".";
     private static final String DOT_SEPARATOR_REGEX = "\\.";
     private static final String JSON_EXPR_LOGICAL_SEPARATOR = "/";
@@ -152,12 +161,13 @@ public class AuthorisedCaseSearchOperation implements CaseSearchOperation {
     private void filterCaseDataForMultiCaseTypeSearch(CrossCaseTypeSearchRequest searchRequest, CaseType authorisedCaseType, CaseDetails caseDetails) {
         if (searchRequest.isMultiCaseTypeSearch() && caseDetails.getData() != null) {
             JsonNode caseData = caseDataToJsonNode(caseDetails);
+            String caseDataJson = caseData.toString();
             JsonNode filteredMultiCaseTypeSearchData = objectMapperService.createEmptyJsonNode();
 
             authorisedCaseType.getSearchAliasFields()
                 .stream()
                 .filter(searchRequest::hasAliasField)
-                .forEach(searchAliasField -> findCaseFieldPathInCaseData(caseData, searchAliasField.getCaseFieldPath())
+                .forEach(searchAliasField -> findCaseFieldPathInCaseData(caseDataJson, searchAliasField.getCaseFieldPath())
                     .filter(not(JsonNode::isMissingNode))
                     .ifPresent(jsonNode -> ((ObjectNode) filteredMultiCaseTypeSearchData).set(searchAliasField.getId(), jsonNode)));
 
@@ -165,15 +175,13 @@ public class AuthorisedCaseSearchOperation implements CaseSearchOperation {
         }
     }
 
-    private Optional<JsonNode> findCaseFieldPathInCaseData(JsonNode caseData, String path) {
-        String jsonPointerExpr;
-        if (path.contains(DOT_SEPARATOR)) {
-            jsonPointerExpr = JSON_EXPR_LOGICAL_SEPARATOR + path.replaceAll(DOT_SEPARATOR_REGEX, JSON_EXPR_LOGICAL_SEPARATOR);
-        } else {
-            jsonPointerExpr = JSON_EXPR_LOGICAL_SEPARATOR + path;
+    private Optional<JsonNode> findCaseFieldPathInCaseData(String caseDataJson, String path) {
+        try {
+            return of(ofNullable(JsonPath.parse(caseDataJson).read(ROOT_ELEMENT + path, JsonNode.class)).orElse(NullNode.getInstance()));
+        } catch (PathNotFoundException e) {
+            log.warn("Case field path not found in case data. {}", e.getMessage());
+            return of(MissingNode.getInstance());
         }
-
-        return Optional.of(caseData.at(jsonPointerExpr));
     }
 
     private Set<String> getUserRoles() {
